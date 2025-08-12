@@ -6,10 +6,11 @@ class IconGenerator {
         this.originalImage = null;
         this.generatedIcons = new Map();
         this.manifestData = null;
-        
+        this.faviconIco = null;
+
         // Standard PWA icon sizes
         this.iconSizes = [16, 32, 48, 72, 96, 128, 144, 152, 192, 256, 384, 512];
-        
+
         this.init();
     }
 
@@ -266,6 +267,37 @@ class IconGenerator {
         document.getElementById('downloadActions').style.display = 'block';
     }
 
+    async generateFaviconIco() {
+        try {
+            // Get 16x16 and 32x32 icons for favicon
+            const icon16 = this.generatedIcons.get(16);
+            const icon32 = this.generatedIcons.get(32);
+
+            if (!icon16 || !icon32) {
+                throw new Error('16x16 and 32x32 icons are required for favicon.ico');
+            }
+
+            // Convert canvases to PNG blobs
+            const blob16 = await this.canvasToBlob(icon16);
+            const blob32 = await this.canvasToBlob(icon32);
+
+            // Use PNG2ICOjs to create ICO file
+            const converter = new PngIcoConverter();
+            const inputs = [
+                { png: blob16 },
+                { png: blob32 }
+            ];
+
+            const icoBlob = await converter.convertToBlobAsync(inputs);
+            this.faviconIco = icoBlob;
+
+            return icoBlob;
+        } catch (error) {
+            console.error('Error generating favicon.ico:', error);
+            throw error;
+        }
+    }
+
     async downloadAllAsZip() {
         try {
             this.showStatus('Подготовка ZIP архива...', 'info');
@@ -283,6 +315,14 @@ class IconGenerator {
             for (const [size, canvas] of this.generatedIcons) {
                 const blob = await this.canvasToBlob(canvas);
                 iconsFolder.file(`icon-${size}x${size}.png`, blob);
+            }
+
+            // Generate and add favicon.ico
+            try {
+                const faviconBlob = await this.generateFaviconIco();
+                zip.file('favicon.ico', faviconBlob);
+            } catch (error) {
+                console.warn('Could not generate favicon.ico:', error);
             }
 
             // Add manifest
@@ -353,22 +393,29 @@ ${this.iconSizes.map(size => `- icon-${size}x${size}.png`).join('\n')}
 
 ### Файлы конфигурации
 - manifest.json - Манифест PWA приложения
+- favicon.ico - Favicon для браузеров (16x16, 32x32)
 
 ## Установка
 
 1. Скопируйте папку \`icons/\` в корень вашего проекта
 2. Скопируйте \`manifest.json\` в корень проекта
-3. Добавьте в HTML:
+3. Скопируйте \`favicon.ico\` в корень проекта
+4. Добавьте в HTML:
    \`\`\`html
    <link rel="manifest" href="/manifest.json">
+   <link rel="icon" href="/favicon.ico" type="image/x-icon">
    \`\`\`
 
 ## Размеры иконок
 
-- **16x16, 32x32** - Favicon
+- **16x16, 32x32** - Favicon (также включены в favicon.ico)
 - **48x48, 72x72, 96x96** - Android Chrome
 - **128x128, 144x144, 152x152** - Android/Windows
 - **192x192, 384x384, 512x512** - PWA стандарт
+
+## Favicon
+
+Файл \`favicon.ico\` содержит иконки размером 16x16 и 32x32 пикселей в формате ICO для максимальной совместимости с браузерами.
 
 ## Поддержка
 
@@ -440,6 +487,17 @@ ${this.iconSizes.map(size => `- icon-${size}x${size}.png`).join('\n')}
         this.showStatus('manifest.json скачан!', 'success');
     }
 
+    async downloadFavicon() {
+        try {
+            const faviconBlob = await this.generateFaviconIco();
+            this.downloadBlob(faviconBlob, 'favicon.ico');
+            this.showStatus('favicon.ico скачан!', 'success');
+        } catch (error) {
+            console.error('Error downloading favicon:', error);
+            this.showStatus('Ошибка при создании favicon.ico', 'error');
+        }
+    }
+
     async copyManifestToClipboard() {
         try {
             const manifestJSON = this.generateManifestJSON();
@@ -507,6 +565,10 @@ function downloadManifest() {
 
 function copyManifest() {
     iconGenerator.copyManifestToClipboard();
+}
+
+function downloadFavicon() {
+    iconGenerator.downloadFavicon();
 }
 
 // Initialize when page loads

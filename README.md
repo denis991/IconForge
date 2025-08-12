@@ -10,7 +10,7 @@
 - **JPEG** - фотографии и сложные изображения
 
 ### 📐 Автоматическая генерация размеров
-- **16×16, 32×32** - Favicon для браузеров
+- **16×16, 32×32** - Favicon для браузеров + favicon.ico
 - **48×48, 72×72, 96×96** - Android Chrome
 - **128×128, 144×144, 152×152** - Android/Windows tiles
 - **192×192, 384×384, 512×512** - PWA стандарт
@@ -22,9 +22,10 @@
 - **Цвет темы** - для PWA манифеста
 
 ### 📦 Экспорт
-- **ZIP архив** - все иконки + manifest.json + README
+- **ZIP архив** - все иконки + manifest.json + favicon.ico + README
 - **Отдельные файлы** - скачивание по одному
 - **manifest.json** - готовый PWA манифест
+- **favicon.ico** - готовый favicon для браузеров
 - **Копирование в буфер** - быстрое копирование кода
 
 ## 🚀 Использование
@@ -56,6 +57,7 @@
 ### 5. Скачивание
 - **ZIP архив** - все файлы сразу
 - **manifest.json** - только манифест
+- **favicon.ico** - только favicon
 - **Отдельные иконки** - по кнопке у каждой
 
 ## 📁 Структура результата
@@ -75,6 +77,7 @@ pwa-icons.zip
 │   ├── icon-256x256.png
 │   ├── icon-384x384.png
 │   └── icon-512x512.png
+├── favicon.ico
 ├── manifest.json
 └── README.md
 ```
@@ -87,13 +90,14 @@ pwa-icons.zip
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#007bff">
 
+<!-- Favicon -->
+<link rel="icon" href="/favicon.ico" type="image/x-icon">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16x16.png">
+
 <!-- Apple Touch Icons -->
 <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192x192.png">
 <link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512x512.png">
-
-<!-- Favicon -->
-<link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16x16.png">
 ```
 
 ### Service Worker (кеширование)
