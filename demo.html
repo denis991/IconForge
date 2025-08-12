@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PWA Icon Generator - Демо</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 2rem;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1, h2 {
+            color: #333;
+        }
+        
+        .demo-section {
+            margin: 2rem 0;
+            padding: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        
+        .icon-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        
+        .icon-demo {
+            text-align: center;
+            padding: 1rem;
+            background: white;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        
+        .icon-demo canvas {
+            width: 64px;
+            height: 64px;
+            border-radius: 8px;
+        }
+        
+        .icon-demo p {
+            margin: 0.5rem 0 0 0;
+            font-size: 0.8rem;
+            color: #666;
+        }
+        
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin: 0.5rem;
+        }
+        
+        .btn:hover {
+            background: #0056b3;
+        }
+        
+        .code-block {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 1rem;
+            font-family: monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .feature-list li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .feature-list li:before {
+            content: "✅ ";
+            margin-right: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 PWA Icon Generator - Демонстрация</h1>
+        
+        <p>Этот инструмент позволяет создать полный набор иконок для PWA приложения из одного изображения.</p>
+        
+        <div class="demo-section">
+            <h2>🚀 Возможности</h2>
+            <ul class="feature-list">
+                <li>Генерация всех стандартных размеров PWA иконок</li>
+                <li>Поддержка SVG, PNG, JPEG форматов</li>
+                <li>Настройка скругления углов</li>
+                <li>Настройка отступов</li>
+                <li>Выбор цвета фона</li>
+                <li>Автоматическая генерация manifest.json</li>
+                <li>Скачивание в ZIP архиве</li>
+                <li>Копирование manifest в буфер обмена</li>
+            </ul>
+        </div>
+        
+        <div class="demo-section">
+            <h2>📱 Стандартные размеры иконок</h2>
+            <div id="iconSizesDemo" class="icon-grid"></div>
+        </div>
+        
+        <div class="demo-section">
+            <h2>📄 Пример manifest.json</h2>
+            <div class="code-block" id="manifestExample"></div>
+        </div>
+        
+        <div class="demo-section">
+            <h2>🔧 Интеграция в проект</h2>
+            <h3>1. HTML</h3>
+            <div class="code-block">
+&lt;!-- В &lt;head&gt; секции --&gt;
+&lt;link rel="manifest" href="/manifest.json"&gt;
+&lt;meta name="theme-color" content="#007bff"&gt;
+
+&lt;!-- Apple Touch Icons --&gt;
+&lt;link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192x192.png"&gt;
+&lt;link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512x512.png"&gt;
+
+&lt;!-- Favicon --&gt;
+&lt;link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32x32.png"&gt;
+&lt;link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16x16.png"&gt;
+            </div>
+            
+            <h3>2. Service Worker (опционально)</h3>
+            <div class="code-block">
+// Кеширование иконок
+const CACHE_NAME = 'app-icons-v1';
+const ICON_URLS = [
+  '/icons/icon-192x192.png',
+  '/icons/icon-512x512.png',
+  '/manifest.json'
+];
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(ICON_URLS))
+  );
+});
+            </div>
+        </div>
+        
+        <div class="demo-section">
+            <h2>🎯 Использование</h2>
+            <ol>
+                <li>Подготовьте изображение высокого качества (рекомендуется 512x512px или больше)</li>
+                <li>Загрузите изображение в генератор</li>
+                <li>Настройте параметры (скругление, отступы, цвета)</li>
+                <li>Нажмите "Сгенерировать иконки"</li>
+                <li>Скачайте ZIP архив с иконками и manifest.json</li>
+                <li>Интегрируйте файлы в ваш проект</li>
+            </ol>
+        </div>
+        
+        <div style="text-align: center; margin: 2rem 0;">
+            <a href="index.html" class="btn">🚀 Открыть генератор</a>
+            <a href="../../index.html" class="btn" style="background: #28a745;">📝 Вернуться к MarkMirror</a>
+        </div>
+    </div>
+
+    <script>
+        // Demo functionality
+        document.addEventListener('DOMContentLoaded', () => {
+            generateIconSizesDemo();
+            generateManifestExample();
+        });
+
+        function generateIconSizesDemo() {
+            const sizes = [16, 32, 48, 72, 96, 128, 144, 152, 192, 256, 384, 512];
+            const container = document.getElementById('iconSizesDemo');
+            
+            sizes.forEach(size => {
+                const demo = document.createElement('div');
+                demo.className = 'icon-demo';
+                
+                const canvas = document.createElement('canvas');
+                canvas.width = size;
+                canvas.height = size;
+                
+                const ctx = canvas.getContext('2d');
+                
+                // Create demo icon
+                const gradient = ctx.createLinearGradient(0, 0, size, size);
+                gradient.addColorStop(0, '#007bff');
+                gradient.addColorStop(1, '#0056b3');
+                
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, size, size);
+                
+                // Add rounded corners
+                ctx.globalCompositeOperation = 'destination-in';
+                ctx.beginPath();
+                roundRect(ctx, 0, 0, size, size, size * 0.15);
+                ctx.fill();
+                ctx.globalCompositeOperation = 'source-over';
+                
+                // Add text
+                ctx.fillStyle = 'white';
+                ctx.font = `bold ${size * 0.3}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('M', size / 2, size / 2);
+                
+                const p = document.createElement('p');
+                p.textContent = `${size}×${size}`;
+                
+                demo.appendChild(canvas);
+                demo.appendChild(p);
+                container.appendChild(demo);
+            });
+        }
+
+        function roundRect(ctx, x, y, width, height, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+        }
+
+        function generateManifestExample() {
+            const manifest = {
+                "name": "MarkMirror Mobile - Markdown Editor",
+                "short_name": "MarkMirror",
+                "description": "Мощный Markdown-редактор с двухпанельным интерфейсом",
+                "start_url": "/",
+                "display": "standalone",
+                "background_color": "#ffffff",
+                "theme_color": "#007bff",
+                "orientation": "any",
+                "scope": "/",
+                "lang": "ru",
+                "icons": [
+                    {
+                        "src": "icons/icon-192x192.png",
+                        "sizes": "192x192",
+                        "type": "image/png",
+                        "purpose": "any maskable"
+                    },
+                    {
+                        "src": "icons/icon-512x512.png",
+                        "sizes": "512x512",
+                        "type": "image/png",
+                        "purpose": "any maskable"
+                    }
+                ],
+                "shortcuts": [
+                    {
+                        "name": "Новый документ",
+                        "short_name": "Новый",
+                        "description": "Создать новый документ",
+                        "url": "/?action=new",
+                        "icons": [
+                            {
+                                "src": "icons/icon-96x96.png",
+                                "sizes": "96x96"
+                            }
+                        ]
+                    }
+                ]
+            };
+            
+            document.getElementById('manifestExample').textContent = JSON.stringify(manifest, null, 2);
+        }
+    </script>
+</body>
+</html>
