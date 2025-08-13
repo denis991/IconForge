@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест цветовых селекторов</title>
+    <link rel="stylesheet" href="./src/style/index.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Тест улучшенных цветовых селекторов</h1>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label for="themeColor">Цвет темы:</label>
+                <div class="color-input-wrapper">
+                    <input type="color" id="themeColor" value="#007bff" />
+                    <input type="text" id="themeColorPreview" class="color-preview" value="#007bff" readonly />
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label for="backgroundColor">Цвет фона:</label>
+                <div class="color-input-wrapper">
+                    <input type="color" id="backgroundColor" value="#ffffff" />
+                    <input type="text" id="backgroundColorPreview" class="color-preview" value="#ffffff" readonly />
+                </div>
+            </div>
+        </div>
+
+        <div class="original-preview">
+            <h3>📷 Исходное изображение</h3>
+            <div class="image-container">
+                <img id="originalImage" class="original-image" alt="Исходное изображение" />
+                <div class="image-placeholder" id="imagePlaceholder">
+                    <div class="placeholder-icon">🖼️</div>
+                    <div class="placeholder-text">Изображение будет отображено здесь</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Color inputs synchronization
+        document.getElementById('themeColor').addEventListener('input', (e) => {
+            document.getElementById('themeColorPreview').value = e.target.value.toUpperCase();
+        });
+
+        document.getElementById('backgroundColor').addEventListener('input', (e) => {
+            document.getElementById('backgroundColorPreview').value = e.target.value.toUpperCase();
+        });
+
+        // Allow manual color input
+        document.getElementById('themeColorPreview').addEventListener('input', (e) => {
+            const color = e.target.value;
+            if (isValidHexColor(color)) {
+                document.getElementById('themeColor').value = color;
+            }
+        });
+
+        document.getElementById('backgroundColorPreview').addEventListener('input', (e) => {
+            const color = e.target.value;
+            if (isValidHexColor(color)) {
+                document.getElementById('backgroundColor').value = color;
+            }
+        });
+
+        function isValidHexColor(color) {
+            return /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(color);
+        }
+    </script>
+</body>
+</html>

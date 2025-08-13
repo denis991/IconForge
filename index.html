@@ -3,7 +3,33 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PWA Icon Generator - MarkMirror</title>
+    <title>PWA Icon Generator - IconForge</title>
+    <meta name="description" content="Icon Forge Generator PWA - PWA приложение для создания иконок" />
+    <meta name="theme-color" content="#007bff" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="IconForge" />
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="./src/manifest.json" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="./src/img/favicon.ico" />
+
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" sizes="152x152" href="./src/img/icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="./src/img/icon-192x192.png" />
+
+    <!-- Standard Icons -->
+    <link rel="icon" type="image/png" sizes="16x16" href="./src/img/icon-16x16.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="./src/img/icon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="96x96" href="./src/img/icon-96x96.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="./src/img/icon-192x192.png" />
+
+    <!-- Apple Splash Screens -->
+    <link rel="apple-touch-startup-image" href="./src/img/splash-640x1136.png" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2)" />
+    <link rel="apple-touch-startup-image" href="./src/img/splash-750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)" />
+
     <link rel="stylesheet" href="./src/style/index.css" />
   </head>
   <body>
@@ -28,8 +54,14 @@
         <div class="preview-section" id="previewSection">
           <!-- Original Image Preview -->
           <div class="original-preview">
-            <h3>Исходное изображение</h3>
-            <img id="originalImage" class="original-image" alt="Original" />
+            <h3>📷 Исходное изображение</h3>
+            <div class="image-container">
+              <img id="originalImage" class="original-image" alt="Исходное изображение" />
+              <div class="image-placeholder" id="imagePlaceholder">
+                <div class="placeholder-icon">🖼️</div>
+                <div class="placeholder-text">Изображение будет отображено здесь</div>
+              </div>
+            </div>
             <div id="imageInfo"></div>
           </div>
 
@@ -47,12 +79,18 @@
 
             <div class="control-group">
               <label for="themeColor">Цвет темы:</label>
-              <input type="color" id="themeColor" value="#007bff" />
+              <div class="color-input-wrapper">
+                <input type="color" id="themeColor" value="#007bff" />
+                <input type="text" id="themeColorPreview" class="color-preview" value="#007bff" readonly />
+              </div>
             </div>
 
             <div class="control-group">
               <label for="backgroundColor">Цвет фона:</label>
-              <input type="color" id="backgroundColor" value="#ffffff" />
+              <div class="color-input-wrapper">
+                <input type="color" id="backgroundColor" value="#ffffff" />
+                <input type="text" id="backgroundColorPreview" class="color-preview" value="#ffffff" readonly />
+              </div>
             </div>
 
             <div class="control-group">
@@ -103,7 +141,24 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
     <!-- Application Scripts -->
+    <script src="./src/script/image-loader.js"></script>
+    <script src="./src/script/manifest-generator.js"></script>
     <script src="./src/script/index.js"></script>
     <script src="./src/script/icon-generator.js"></script>
+
+    <!-- PWA Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js')
+            .then((registration) => {
+              console.log('SW registered: ', registration);
+            })
+            .catch((registrationError) => {
+              console.log('SW registration failed: ', registrationError);
+            });
+        });
+      }
+    </script>
   </body>
 </html>

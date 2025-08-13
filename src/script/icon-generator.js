@@ -35,6 +35,30 @@ class IconGenerator {
             document.getElementById('paddingValue').textContent = e.target.value + '%';
         });
 
+        // Color inputs synchronization
+        document.getElementById('themeColor').addEventListener('input', (e) => {
+            document.getElementById('themeColorPreview').value = e.target.value.toUpperCase();
+        });
+
+        document.getElementById('backgroundColor').addEventListener('input', (e) => {
+            document.getElementById('backgroundColorPreview').value = e.target.value.toUpperCase();
+        });
+
+        // Allow manual color input
+        document.getElementById('themeColorPreview').addEventListener('input', (e) => {
+            const color = e.target.value;
+            if (this.isValidHexColor(color)) {
+                document.getElementById('themeColor').value = color;
+            }
+        });
+
+        document.getElementById('backgroundColorPreview').addEventListener('input', (e) => {
+            const color = e.target.value;
+            if (this.isValidHexColor(color)) {
+                document.getElementById('backgroundColor').value = color;
+            }
+        });
+
         // Real-time preview updates
         ['appName', 'shortName', 'themeColor', 'backgroundColor', 'cornerRadius', 'padding'].forEach(id => {
             document.getElementById(id).addEventListener('input', () => {
@@ -75,10 +99,14 @@ class IconGenerator {
     }
 
     updateRangeValues() {
-        document.getElementById('radiusValue').textContent = 
+        document.getElementById('radiusValue').textContent =
             document.getElementById('cornerRadius').value + '%';
-        document.getElementById('paddingValue').textContent = 
+        document.getElementById('paddingValue').textContent =
             document.getElementById('padding').value + '%';
+    }
+
+    isValidHexColor(color) {
+        return /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(color);
     }
 
     async handleFileSelect(file) {
@@ -128,8 +156,31 @@ class IconGenerator {
     displayOriginalImage(img, file) {
         const originalImage = document.getElementById('originalImage');
         const imageInfo = document.getElementById('imageInfo');
-        
-        originalImage.src = img.src;
+        const placeholder = document.getElementById('imagePlaceholder');
+
+        // Create a new blob URL to ensure it's accessible
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            originalImage.src = e.target.result;
+            originalImage.classList.add('loaded');
+            originalImage.style.display = 'block';
+
+            // Hide placeholder when image loads
+            if (placeholder) {
+                placeholder.classList.add('hidden');
+            }
+        };
+        reader.onerror = () => {
+            console.error('Error reading file');
+            originalImage.style.display = 'none';
+
+            // Show placeholder on error
+            if (placeholder) {
+                placeholder.classList.remove('hidden');
+            }
+        };
+        reader.readAsDataURL(file);
+
         imageInfo.innerHTML = `
             <p><strong>Размер:</strong> ${img.width} × ${img.height} px</p>
             <p><strong>Файл:</strong> ${file.name}</p>
