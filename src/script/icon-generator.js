@@ -7,6 +7,7 @@ class IconGenerator {
         this.generatedIcons = new Map();
         this.manifestData = null;
         this.faviconIco = null;
+        this.currentFile = null; // Track current file to prevent duplicate processing
 
         // Standard PWA icon sizes
         this.iconSizes = [16, 32, 48, 72, 96, 128, 144, 152, 192, 256, 384, 512];
@@ -23,7 +24,11 @@ class IconGenerator {
     setupEventListeners() {
         // File input change
         document.getElementById('fileInput').addEventListener('change', (e) => {
-            this.handleFileSelect(e.target.files[0]);
+            if (e.target.files[0]) {
+                this.handleFileSelect(e.target.files[0]);
+                // Reset input to allow selecting the same file again
+                e.target.value = '';
+            }
         });
 
         // Range inputs
@@ -71,7 +76,10 @@ class IconGenerator {
 
     setupDragAndDrop() {
         const uploadSection = document.getElementById('uploadSection');
+        const selectFileBtn = document.getElementById('selectFileBtn');
+        const fileInput = document.getElementById('fileInput');
 
+        // Drag and drop events
         uploadSection.addEventListener('dragover', (e) => {
             e.preventDefault();
             uploadSection.classList.add('dragover');
@@ -85,16 +93,27 @@ class IconGenerator {
         uploadSection.addEventListener('drop', (e) => {
             e.preventDefault();
             uploadSection.classList.remove('dragover');
-            
+
             const files = e.dataTransfer.files;
             if (files.length > 0) {
                 this.handleFileSelect(files[0]);
             }
         });
 
-        // Click to upload
-        uploadSection.addEventListener('click', () => {
-            document.getElementById('fileInput').click();
+        // Click handlers - separate for button and upload area
+        selectFileBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent event bubbling
+            console.log('Select file button clicked');
+            fileInput.click();
+        });
+
+        // Click on upload area (but not on button)
+        uploadSection.addEventListener('click', (e) => {
+            // Only trigger if not clicking on the button
+            if (e.target !== selectFileBtn && !selectFileBtn.contains(e.target)) {
+                console.log('Upload area clicked');
+                fileInput.click();
+            }
         });
     }
 
@@ -110,7 +129,18 @@ class IconGenerator {
     }
 
     async handleFileSelect(file) {
+        console.log('handleFileSelect called with:', file ? file.name : 'no file');
+
         if (!file) return;
+
+        // Prevent processing the same file multiple times
+        if (this.currentFile &&
+            this.currentFile.name === file.name &&
+            this.currentFile.size === file.size &&
+            this.currentFile.lastModified === file.lastModified) {
+            console.log('Same file already processed, skipping...');
+            return;
+        }
 
         // Validate file type
         if (!file.type.startsWith('image/')) {
@@ -118,19 +148,33 @@ class IconGenerator {
             return;
         }
 
+        // Validate file size (10MB limit)
+        if (file.size > 10 * 1024 * 1024) {
+            this.showStatus('Файл слишком большой. Максимальный размер: 10MB', 'error');
+            return;
+        }
+
         try {
             this.showStatus('Загрузка изображения...', 'info');
-            
+
+            // Store current file info
+            this.currentFile = {
+                name: file.name,
+                size: file.size,
+                lastModified: file.lastModified
+            };
+
             const img = await this.loadImage(file);
             this.originalImage = img;
-            
+
             this.displayOriginalImage(img, file);
             this.showPreviewSection();
-            
+
             this.showStatus('Изображение загружено успешно!', 'success');
         } catch (error) {
             console.error('Error loading image:', error);
             this.showStatus('Ошибка при загрузке изображения', 'error');
+            this.currentFile = null; // Reset on error
         }
     }
 

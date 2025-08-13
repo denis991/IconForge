@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест загрузки файлов</title>
+    <link rel="stylesheet" href="../style/index.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Тест загрузки файлов</h1>
+        
+        <div class="upload-section" id="uploadSection">
+            <div class="upload-icon">📁</div>
+            <div class="upload-text">Перетащите изображение сюда или нажмите для выбора файла</div>
+            <div>
+                <button class="btn" id="selectFileBtn">Выбрать файл</button>
+            </div>
+            <input type="file" id="fileInput" class="file-input" accept="image/*" />
+        </div>
+
+        <div class="original-preview">
+            <h3>📷 Исходное изображение</h3>
+            <div class="image-container">
+                <img id="originalImage" class="original-image" alt="Исходное изображение" />
+                <div class="image-placeholder" id="imagePlaceholder">
+                    <div class="placeholder-icon">🖼️</div>
+                    <div class="placeholder-text">Изображение будет отображено здесь</div>
+                </div>
+            </div>
+            <div id="imageInfo"></div>
+        </div>
+
+        <div id="statusMessage"></div>
+    </div>
+
+    <script>
+        class TestUploader {
+            constructor() {
+                this.currentFile = null;
+                this.setupEventListeners();
+                this.setupDragAndDrop();
+            }
+
+            setupEventListeners() {
+                document.getElementById('fileInput').addEventListener('change', (e) => {
+                    if (e.target.files[0]) {
+                        this.handleFileSelect(e.target.files[0]);
+                        e.target.value = '';
+                    }
+                });
+            }
+
+            setupDragAndDrop() {
+                const uploadSection = document.getElementById('uploadSection');
+                const selectFileBtn = document.getElementById('selectFileBtn');
+                const fileInput = document.getElementById('fileInput');
+
+                uploadSection.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    uploadSection.classList.add('dragover');
+                });
+
+                uploadSection.addEventListener('dragleave', (e) => {
+                    e.preventDefault();
+                    uploadSection.classList.remove('dragover');
+                });
+
+                uploadSection.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    uploadSection.classList.remove('dragover');
+                    
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        this.handleFileSelect(files[0]);
+                    }
+                });
+
+                selectFileBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    console.log('Button clicked');
+                    fileInput.click();
+                });
+
+                uploadSection.addEventListener('click', (e) => {
+                    if (e.target !== selectFileBtn && !selectFileBtn.contains(e.target)) {
+                        console.log('Upload area clicked');
+                        fileInput.click();
+                    }
+                });
+            }
+
+            handleFileSelect(file) {
+                console.log('handleFileSelect called with:', file.name);
+                
+                if (!file) return;
+
+                if (this.currentFile && 
+                    this.currentFile.name === file.name && 
+                    this.currentFile.size === file.size && 
+                    this.currentFile.lastModified === file.lastModified) {
+                    console.log('Same file already processed, skipping...');
+                    return;
+                }
+
+                if (!file.type.startsWith('image/')) {
+                    this.showStatus('Пожалуйста, выберите файл изображения', 'error');
+                    return;
+                }
+
+                this.currentFile = {
+                    name: file.name,
+                    size: file.size,
+                    lastModified: file.lastModified
+                };
+
+                this.displayImage(file);
+                this.showStatus('Файл загружен: ' + file.name, 'success');
+            }
+
+            displayImage(file) {
+                const originalImage = document.getElementById('originalImage');
+                const imageInfo = document.getElementById('imageInfo');
+                const placeholder = document.getElementById('imagePlaceholder');
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    originalImage.src = e.target.result;
+                    originalImage.classList.add('loaded');
+                    originalImage.style.display = 'block';
+                    
+                    if (placeholder) {
+                        placeholder.classList.add('hidden');
+                    }
+                };
+                reader.readAsDataURL(file);
+                
+                imageInfo.innerHTML = `
+                    <p><strong>Файл:</strong> ${file.name}</p>
+                    <p><strong>Размер файла:</strong> ${this.formatFileSize(file.size)}</p>
+                `;
+            }
+
+            formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+
+            showStatus(message, type) {
+                const statusElement = document.getElementById('statusMessage');
+                statusElement.textContent = message;
+                statusElement.className = `status-${type}`;
+                console.log(`Status (${type}):`, message);
+            }
+        }
+
+        // Initialize when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            new TestUploader();
+        });
+    </script>
+</body>
+</html>
