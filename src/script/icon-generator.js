@@ -2,489 +2,604 @@
 // Generates complete icon sets from uploaded images
 
 class IconGenerator {
-    constructor() {
-        this.originalImage = null;
-        this.generatedIcons = new Map();
-        this.manifestData = null;
-        this.faviconIco = null;
-        this.currentFile = null; // Track current file to prevent duplicate processing
+  constructor() {
+    this.originalImage = null;
+    this.generatedIcons = new Map();
+    this.manifestData = null;
+    this.faviconIco = null;
+    this.currentFile = null; // Track current file to prevent duplicate processing
 
-        // Standard PWA icon sizes
-        this.iconSizes = [16, 32, 48, 72, 96, 128, 144, 152, 192, 256, 384, 512];
+    // Standard PWA icon sizes
+    this.iconSizes = [16, 32, 48, 72, 96, 128, 144, 152, 192, 256, 384, 512];
 
-        this.init();
-    }
+    // Minimal icon sizes
+    this.minimalIconSizes = [16, 32, 180, 192, 512];
 
-    init() {
-        this.setupEventListeners();
-        this.setupDragAndDrop();
-        this.updateRangeValues();
-    }
+    this.init();
+  }
 
-    setupEventListeners() {
-        // File input change
-        document.getElementById('fileInput').addEventListener('change', (e) => {
-            if (e.target.files[0]) {
-                this.handleFileSelect(e.target.files[0]);
-                // Reset input to allow selecting the same file again
-                e.target.value = '';
-            }
-        });
+  init() {
+    this.setupEventListeners();
+    this.setupDragAndDrop();
+    this.updateRangeValues();
+    this.loadSettings();
+  }
 
-        // Range inputs
-        document.getElementById('cornerRadius').addEventListener('input', (e) => {
-            document.getElementById('radiusValue').textContent = e.target.value + '%';
-        });
+  setupEventListeners() {
+    // File input change
+    document.getElementById('fileInput').addEventListener('change', e => {
+      if (e.target.files[0]) {
+        this.handleFileSelect(e.target.files[0]);
+        // Reset input to allow selecting the same file again
+        e.target.value = '';
+      }
+    });
 
-        document.getElementById('padding').addEventListener('input', (e) => {
-            document.getElementById('paddingValue').textContent = e.target.value + '%';
-        });
+    // Range inputs
+    document.getElementById('cornerRadius').addEventListener('input', e => {
+      document.getElementById('radiusValue').textContent = e.target.value + '%';
+    });
 
-        // Color inputs synchronization
-        document.getElementById('themeColor').addEventListener('input', (e) => {
-            document.getElementById('themeColorPreview').value = e.target.value.toUpperCase();
-        });
+    document.getElementById('padding').addEventListener('input', e => {
+      document.getElementById('paddingValue').textContent = e.target.value + '%';
+    });
 
-        document.getElementById('backgroundColor').addEventListener('input', (e) => {
-            document.getElementById('backgroundColorPreview').value = e.target.value.toUpperCase();
-        });
+    // Color inputs synchronization
+    document.getElementById('themeColor').addEventListener('input', e => {
+      document.getElementById('themeColorPreview').value = e.target.value.toUpperCase();
+    });
 
-        // Allow manual color input
-        document.getElementById('themeColorPreview').addEventListener('input', (e) => {
-            const color = e.target.value;
-            if (this.isValidHexColor(color)) {
-                document.getElementById('themeColor').value = color;
-            }
-        });
+    document.getElementById('backgroundColor').addEventListener('input', e => {
+      document.getElementById('backgroundColorPreview').value = e.target.value.toUpperCase();
+    });
 
-        document.getElementById('backgroundColorPreview').addEventListener('input', (e) => {
-            const color = e.target.value;
-            if (this.isValidHexColor(color)) {
-                document.getElementById('backgroundColor').value = color;
-            }
-        });
+    // Allow manual color input
+    document.getElementById('themeColorPreview').addEventListener('input', e => {
+      const color = e.target.value;
+      if (this.isValidHexColor(color)) {
+        document.getElementById('themeColor').value = color;
+      }
+    });
 
-        // Real-time preview updates
-        ['appName', 'shortName', 'themeColor', 'backgroundColor', 'cornerRadius', 'padding'].forEach(id => {
-            document.getElementById(id).addEventListener('input', () => {
-                if (this.generatedIcons.size > 0) {
-                    this.updateManifestPreview();
+    document.getElementById('backgroundColorPreview').addEventListener('input', e => {
+      const color = e.target.value;
+      if (this.isValidHexColor(color)) {
+        document.getElementById('backgroundColor').value = color;
+      }
+    });
+
+    // Real-time preview updates and save settings
+    ['appName', 'shortName', 'themeColor', 'backgroundColor', 'cornerRadius', 'padding'].forEach(id => {
+      document.getElementById(id).addEventListener('input', () => {
+        this.saveSettings(); // Save on every change
+        if (this.generatedIcons.size > 0) {
+          this.updateManifestPreview();
+        }
+      });
+    });
+
+    // Toggle switches
+    document.getElementById('addBackground').addEventListener('change', () => {
+      this.saveSettings(); // Save on every change
+      if (this.generatedIcons.size > 0) {
+        this.updateManifestPreview();
+      }
+    });
+
+    document.getElementById('useMinimalSet').addEventListener('change', () => {
+      this.saveSettings(); // Save on every change
+      if (this.generatedIcons.size > 0) {
+        this.updateManifestPreview();
+      }
+    });
+  }
+
+  setupDragAndDrop() {
+    const uploadSection = document.getElementById('uploadSection');
+    const selectFileBtn = document.getElementById('selectFileBtn');
+    const fileInput = document.getElementById('fileInput');
+
+    // Drag and drop events
+    uploadSection.addEventListener('dragover', e => {
+      e.preventDefault();
+      uploadSection.classList.add('dragover');
+    });
+
+    uploadSection.addEventListener('dragleave', e => {
+      e.preventDefault();
+      uploadSection.classList.remove('dragover');
+    });
+
+    uploadSection.addEventListener('drop', e => {
+      e.preventDefault();
+      uploadSection.classList.remove('dragover');
+
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        this.handleFileSelect(files[0]);
+      }
+    });
+
+    // Click handlers - separate for button and upload area
+    selectFileBtn.addEventListener('click', e => {
+      e.stopPropagation(); // Prevent event bubbling
+      console.log('Select file button clicked');
+      fileInput.click();
+    });
+
+    // Click on upload area (but not on button)
+    uploadSection.addEventListener('click', e => {
+      // Only trigger if not clicking on the button
+      if (e.target !== selectFileBtn && !selectFileBtn.contains(e.target)) {
+        console.log('Upload area clicked');
+        fileInput.click();
+      }
+    });
+  }
+
+  updateRangeValues() {
+    document.getElementById('radiusValue').textContent = document.getElementById('cornerRadius').value + '%';
+    document.getElementById('paddingValue').textContent = document.getElementById('padding').value + '%';
+  }
+
+  // Save settings to localStorage
+  saveSettings() {
+    const settings = {
+      appName: document.getElementById('appName').value,
+      shortName: document.getElementById('shortName').value,
+      themeColor: document.getElementById('themeColor').value,
+      backgroundColor: document.getElementById('backgroundColor').value,
+      cornerRadius: document.getElementById('cornerRadius').value,
+      padding: document.getElementById('padding').value,
+      addBackground: document.getElementById('addBackground').checked,
+      useMinimalSet: document.getElementById('useMinimalSet').checked,
+    };
+
+    localStorage.setItem('iconForgeSettings', JSON.stringify(settings));
+    
+    // Show save indicator
+    this.showSaveIndicator();
+  }
+
+  // Show save indicator
+  showSaveIndicator() {
+    const statusElement = document.getElementById('settingsStatus');
+    statusElement.style.display = 'block';
+    
+    // Hide after 2 seconds
+    setTimeout(() => {
+      statusElement.style.display = 'none';
+    }, 2000);
+  }
+
+      // Load settings from localStorage
+    loadSettings() {
+        const savedSettings = localStorage.getItem('iconForgeSettings');
+        
+        if (savedSettings) {
+            try {
+                const settings = JSON.parse(savedSettings);
+                
+                // Apply saved settings
+                if (settings.appName) document.getElementById('appName').value = settings.appName;
+                if (settings.shortName) document.getElementById('shortName').value = settings.shortName;
+                if (settings.themeColor) {
+                    document.getElementById('themeColor').value = settings.themeColor;
+                    document.getElementById('themeColorPreview').value = settings.themeColor.toUpperCase();
                 }
-            });
-        });
-    }
-
-    setupDragAndDrop() {
-        const uploadSection = document.getElementById('uploadSection');
-        const selectFileBtn = document.getElementById('selectFileBtn');
-        const fileInput = document.getElementById('fileInput');
-
-        // Drag and drop events
-        uploadSection.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadSection.classList.add('dragover');
-        });
-
-        uploadSection.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            uploadSection.classList.remove('dragover');
-        });
-
-        uploadSection.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadSection.classList.remove('dragover');
-
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                this.handleFileSelect(files[0]);
+                if (settings.backgroundColor) {
+                    document.getElementById('backgroundColor').value = settings.backgroundColor;
+                    document.getElementById('backgroundColorPreview').value = settings.backgroundColor.toUpperCase();
+                }
+                if (settings.cornerRadius) document.getElementById('cornerRadius').value = settings.cornerRadius;
+                if (settings.padding) document.getElementById('padding').value = settings.padding;
+                if (settings.addBackground !== undefined) document.getElementById('addBackground').checked = settings.addBackground;
+                if (settings.useMinimalSet !== undefined) document.getElementById('useMinimalSet').checked = settings.useMinimalSet;
+                
+                // Update range values display
+                this.updateRangeValues();
+                
+                console.log('Settings loaded from localStorage');
+            } catch (error) {
+                console.error('Error loading settings:', error);
             }
-        });
-
-        // Click handlers - separate for button and upload area
-        selectFileBtn.addEventListener('click', (e) => {
-            e.stopPropagation(); // Prevent event bubbling
-            console.log('Select file button clicked');
-            fileInput.click();
-        });
-
-        // Click on upload area (but not on button)
-        uploadSection.addEventListener('click', (e) => {
-            // Only trigger if not clicking on the button
-            if (e.target !== selectFileBtn && !selectFileBtn.contains(e.target)) {
-                console.log('Upload area clicked');
-                fileInput.click();
-            }
-        });
-    }
-
-    updateRangeValues() {
-        document.getElementById('radiusValue').textContent =
-            document.getElementById('cornerRadius').value + '%';
-        document.getElementById('paddingValue').textContent =
-            document.getElementById('padding').value + '%';
-    }
-
-    isValidHexColor(color) {
-        return /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(color);
-    }
-
-    async handleFileSelect(file) {
-        console.log('handleFileSelect called with:', file ? file.name : 'no file');
-
-        if (!file) return;
-
-        // Prevent processing the same file multiple times
-        if (this.currentFile &&
-            this.currentFile.name === file.name &&
-            this.currentFile.size === file.size &&
-            this.currentFile.lastModified === file.lastModified) {
-            console.log('Same file already processed, skipping...');
-            return;
-        }
-
-        // Validate file type
-        if (!file.type.startsWith('image/')) {
-            this.showStatus('Пожалуйста, выберите файл изображения', 'error');
-            return;
-        }
-
-        // Validate file size (10MB limit)
-        if (file.size > 10 * 1024 * 1024) {
-            this.showStatus('Файл слишком большой. Максимальный размер: 10MB', 'error');
-            return;
-        }
-
-        try {
-            this.showStatus('Загрузка изображения...', 'info');
-
-            // Store current file info
-            this.currentFile = {
-                name: file.name,
-                size: file.size,
-                lastModified: file.lastModified
-            };
-
-            const img = await this.loadImage(file);
-            this.originalImage = img;
-
-            this.displayOriginalImage(img, file);
-            this.showPreviewSection();
-
-            this.showStatus('Изображение загружено успешно!', 'success');
-        } catch (error) {
-            console.error('Error loading image:', error);
-            this.showStatus('Ошибка при загрузке изображения', 'error');
-            this.currentFile = null; // Reset on error
         }
     }
 
-    loadImage(file) {
-        return new Promise((resolve, reject) => {
-            const img = new Image();
-            const url = URL.createObjectURL(file);
-            
-            img.onload = () => {
-                URL.revokeObjectURL(url);
-                resolve(img);
-            };
-            
-            img.onerror = () => {
-                URL.revokeObjectURL(url);
-                reject(new Error('Failed to load image'));
-            };
-            
-            img.src = url;
-        });
+    // Reset settings to defaults
+    resetSettings() {
+        // Default values
+        document.getElementById('appName').value = 'MarkMirror Mobile';
+        document.getElementById('shortName').value = 'MarkMirror';
+        document.getElementById('themeColor').value = '#007bff';
+        document.getElementById('themeColorPreview').value = '#007bff';
+        document.getElementById('backgroundColor').value = '#ffffff';
+        document.getElementById('backgroundColorPreview').value = '#ffffff';
+        document.getElementById('cornerRadius').value = '15';
+        document.getElementById('padding').value = '10';
+        document.getElementById('addBackground').checked = true;
+        document.getElementById('useMinimalSet').checked = false;
+        
+        // Update range values display
+        this.updateRangeValues();
+        
+        // Save default settings
+        this.saveSettings();
+        
+        // Show success message
+        this.showStatus('Настройки сброшены к значениям по умолчанию!', 'success');
+        
+        console.log('Settings reset to defaults');
     }
 
-    displayOriginalImage(img, file) {
-        const originalImage = document.getElementById('originalImage');
-        const imageInfo = document.getElementById('imageInfo');
-        const placeholder = document.getElementById('imagePlaceholder');
+  isValidHexColor(color) {
+    return /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(color);
+  }
 
-        // Create a new blob URL to ensure it's accessible
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            originalImage.src = e.target.result;
-            originalImage.classList.add('loaded');
-            originalImage.style.display = 'block';
+  async handleFileSelect(file) {
+    console.log('handleFileSelect called with:', file ? file.name : 'no file');
 
-            // Hide placeholder when image loads
-            if (placeholder) {
-                placeholder.classList.add('hidden');
-            }
-        };
-        reader.onerror = () => {
-            console.error('Error reading file');
-            originalImage.style.display = 'none';
+    if (!file) return;
 
-            // Show placeholder on error
-            if (placeholder) {
-                placeholder.classList.remove('hidden');
-            }
-        };
-        reader.readAsDataURL(file);
+    // Prevent processing the same file multiple times
+    if (this.currentFile && this.currentFile.name === file.name && this.currentFile.size === file.size && this.currentFile.lastModified === file.lastModified) {
+      console.log('Same file already processed, skipping...');
+      return;
+    }
 
-        imageInfo.innerHTML = `
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      this.showStatus('Пожалуйста, выберите файл изображения', 'error');
+      return;
+    }
+
+    // Validate file size (10MB limit)
+    if (file.size > 10 * 1024 * 1024) {
+      this.showStatus('Файл слишком большой. Максимальный размер: 10MB', 'error');
+      return;
+    }
+
+    try {
+      this.showStatus('Загрузка изображения...', 'info');
+
+      // Store current file info
+      this.currentFile = {
+        name: file.name,
+        size: file.size,
+        lastModified: file.lastModified,
+      };
+
+      const img = await this.loadImage(file);
+      this.originalImage = img;
+
+      this.displayOriginalImage(img, file);
+      this.showPreviewSection();
+
+      this.showStatus('Изображение загружено успешно!', 'success');
+    } catch (error) {
+      console.error('Error loading image:', error);
+      this.showStatus('Ошибка при загрузке изображения', 'error');
+      this.currentFile = null; // Reset on error
+    }
+  }
+
+  loadImage(file) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        resolve(img);
+      };
+
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('Failed to load image'));
+      };
+
+      img.src = url;
+    });
+  }
+
+  displayOriginalImage(img, file) {
+    const originalImage = document.getElementById('originalImage');
+    const imageInfo = document.getElementById('imageInfo');
+    const placeholder = document.getElementById('imagePlaceholder');
+
+    // Create a new blob URL to ensure it's accessible
+    const reader = new FileReader();
+    reader.onload = e => {
+      originalImage.src = e.target.result;
+      originalImage.classList.add('loaded');
+      originalImage.style.display = 'block';
+
+      // Hide placeholder when image loads
+      if (placeholder) {
+        placeholder.classList.add('hidden');
+      }
+    };
+    reader.onerror = () => {
+      console.error('Error reading file');
+      originalImage.style.display = 'none';
+
+      // Show placeholder on error
+      if (placeholder) {
+        placeholder.classList.remove('hidden');
+      }
+    };
+    reader.readAsDataURL(file);
+
+    imageInfo.innerHTML = `
             <p><strong>Размер:</strong> ${img.width} × ${img.height} px</p>
             <p><strong>Файл:</strong> ${file.name}</p>
             <p><strong>Размер файла:</strong> ${this.formatFileSize(file.size)}</p>
         `;
+  }
+
+  showPreviewSection() {
+    document.getElementById('previewSection').style.display = 'block';
+  }
+
+  formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+
+  showStatus(message, type = 'info') {
+    const statusDiv = document.getElementById('statusMessage');
+    statusDiv.className = `status-message status-${type}`;
+    statusDiv.textContent = message;
+    statusDiv.style.display = 'block';
+
+    if (type === 'success' || type === 'info') {
+      setTimeout(() => {
+        statusDiv.style.display = 'none';
+      }, 3000);
     }
+  }
 
-    showPreviewSection() {
-        document.getElementById('previewSection').style.display = 'block';
+  updateProgress(percentage) {
+    const progressBar = document.getElementById('progressBar');
+    const progressFill = document.getElementById('progressFill');
+
+    progressBar.style.display = 'block';
+    progressFill.style.width = percentage + '%';
+
+    if (percentage >= 100) {
+      setTimeout(() => {
+        progressBar.style.display = 'none';
+      }, 1000);
     }
+  }
 
-    formatFileSize(bytes) {
-        if (bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    }
+  generateIcon(size, cornerRadius, padding, backgroundColor) {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
 
-    showStatus(message, type = 'info') {
-        const statusDiv = document.getElementById('statusMessage');
-        statusDiv.className = `status-message status-${type}`;
-        statusDiv.textContent = message;
-        statusDiv.style.display = 'block';
-        
-        if (type === 'success' || type === 'info') {
-            setTimeout(() => {
-                statusDiv.style.display = 'none';
-            }, 3000);
-        }
-    }
+    canvas.width = size;
+    canvas.height = size;
 
-    updateProgress(percentage) {
-        const progressBar = document.getElementById('progressBar');
-        const progressFill = document.getElementById('progressFill');
+    // Calculate dimensions
+    const paddingPx = (size * padding) / 100;
+    const imageSize = size - paddingPx * 2;
+    const radiusPx = (size * cornerRadius) / 100;
 
-        progressBar.style.display = 'block';
-        progressFill.style.width = percentage + '%';
+    // Check if background should be added
+    const addBackground = document.getElementById('addBackground').checked;
 
-        if (percentage >= 100) {
-            setTimeout(() => {
-                progressBar.style.display = 'none';
-            }, 1000);
-        }
-    }
+    if (addBackground) {
+      // Fill background
+      ctx.fillStyle = backgroundColor;
+      ctx.fillRect(0, 0, size, size);
 
-    generateIcon(size, cornerRadius, padding, backgroundColor) {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-
-        canvas.width = size;
-        canvas.height = size;
-
-        // Calculate dimensions
-        const paddingPx = (size * padding) / 100;
-        const imageSize = size - (paddingPx * 2);
-        const radiusPx = (size * cornerRadius) / 100;
-
-        // Fill background
-        ctx.fillStyle = backgroundColor;
-        ctx.fillRect(0, 0, size, size);
-
-        // Create rounded rectangle mask
-        if (radiusPx > 0) {
-            ctx.globalCompositeOperation = 'destination-in';
-            ctx.beginPath();
-            this.roundRect(ctx, 0, 0, size, size, radiusPx);
-            ctx.fill();
-            ctx.globalCompositeOperation = 'source-over';
-        }
-
-        // Draw image
-        ctx.drawImage(
-            this.originalImage,
-            paddingPx, paddingPx,
-            imageSize, imageSize
-        );
-
-        return canvas;
-    }
-
-    roundRect(ctx, x, y, width, height, radius) {
+      // Create rounded rectangle mask
+      if (radiusPx > 0) {
+        ctx.globalCompositeOperation = 'destination-in';
         ctx.beginPath();
-        ctx.moveTo(x + radius, y);
-        ctx.lineTo(x + width - radius, y);
-        ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-        ctx.lineTo(x + width, y + height - radius);
-        ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-        ctx.lineTo(x + radius, y + height);
-        ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-        ctx.lineTo(x, y + radius);
-        ctx.quadraticCurveTo(x, y, x + radius, y);
-        ctx.closePath();
+        this.roundRect(ctx, 0, 0, size, size, radiusPx);
+        ctx.fill();
+        ctx.globalCompositeOperation = 'source-over';
+      }
     }
 
-    createIconItem(size, canvas) {
-        const iconItem = document.createElement('div');
-        iconItem.className = 'icon-item';
+    // Draw image
+    if (addBackground) {
+      ctx.drawImage(this.originalImage, paddingPx, paddingPx, imageSize, imageSize);
+    } else {
+      // Draw image without background, centered
+      const scale = Math.min(size / this.originalImage.width, size / this.originalImage.height);
+      const scaledWidth = this.originalImage.width * scale;
+      const scaledHeight = this.originalImage.height * scale;
+      const x = (size - scaledWidth) / 2;
+      const y = (size - scaledHeight) / 2;
 
-        const displayCanvas = document.createElement('canvas');
-        displayCanvas.className = 'icon-canvas';
-        displayCanvas.width = 80;
-        displayCanvas.height = 80;
+      ctx.drawImage(this.originalImage, x, y, scaledWidth, scaledHeight);
+    }
 
-        const displayCtx = displayCanvas.getContext('2d');
-        displayCtx.drawImage(canvas, 0, 0, 80, 80);
+    return canvas;
+  }
 
-        iconItem.innerHTML = `
+  roundRect(ctx, x, y, width, height, radius) {
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+  }
+
+  createIconItem(size, canvas) {
+    const iconItem = document.createElement('div');
+    iconItem.className = 'icon-item';
+
+    const displayCanvas = document.createElement('canvas');
+    displayCanvas.className = 'icon-canvas';
+    displayCanvas.width = 80;
+    displayCanvas.height = 80;
+
+    const displayCtx = displayCanvas.getContext('2d');
+    displayCtx.drawImage(canvas, 0, 0, 80, 80);
+
+    iconItem.innerHTML = `
             <div class="icon-size">${size}×${size}</div>
             <button class="btn btn-secondary" onclick="iconGenerator.downloadSingleIcon(${size})">
                 📥 Скачать
             </button>
         `;
 
-        iconItem.insertBefore(displayCanvas, iconItem.firstChild.nextSibling);
+    iconItem.insertBefore(displayCanvas, iconItem.firstChild.nextSibling);
 
-        return iconItem;
+    return iconItem;
+  }
+
+  downloadSingleIcon(size) {
+    const canvas = this.generatedIcons.get(size);
+    if (!canvas) return;
+
+    canvas.toBlob(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `icon-${size}x${size}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
+
+  showDownloadActions() {
+    document.getElementById('downloadActions').style.display = 'block';
+  }
+
+  async generateFaviconIco() {
+    try {
+      // Get 16x16 and 32x32 icons for favicon
+      const icon16 = this.generatedIcons.get(16);
+      const icon32 = this.generatedIcons.get(32);
+
+      if (!icon16 || !icon32) {
+        throw new Error('16x16 and 32x32 icons are required for favicon.ico');
+      }
+
+      // Convert canvases to PNG blobs
+      const blob16 = await this.canvasToBlob(icon16);
+      const blob32 = await this.canvasToBlob(icon32);
+
+      // Use PNG2ICOjs to create ICO file
+      const converter = new PngIcoConverter();
+      const inputs = [{ png: blob16 }, { png: blob32 }];
+
+      const icoBlob = await converter.convertToBlobAsync(inputs);
+      this.faviconIco = icoBlob;
+
+      return icoBlob;
+    } catch (error) {
+      console.error('Error generating favicon.ico:', error);
+      throw error;
+    }
+  }
+
+  async downloadAllAsZip() {
+    try {
+      this.showStatus('Подготовка ZIP архива...', 'info');
+
+      if (typeof JSZip === 'undefined') {
+        // Fallback to individual downloads
+        this.downloadAllIndividually();
+        return;
+      }
+
+      const zip = new JSZip();
+      const iconsFolder = zip.folder('icons');
+
+      // Add icons to zip
+      for (const [size, canvas] of this.generatedIcons) {
+        const blob = await this.canvasToBlob(canvas);
+        iconsFolder.file(`icon-${size}x${size}.png`, blob);
+      }
+
+      // Generate and add favicon.ico
+      try {
+        const faviconBlob = await this.generateFaviconIco();
+        zip.file('favicon.ico', faviconBlob);
+      } catch (error) {
+        console.warn('Could not generate favicon.ico:', error);
+      }
+
+      // Add manifest
+      zip.file('manifest.json', this.generateManifestJSON());
+
+      // Add README
+      zip.file('README.md', this.generateReadme());
+
+      // Generate and download ZIP
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      this.downloadBlob(zipBlob, 'pwa-icons.zip');
+
+      this.showStatus('ZIP архив скачан!', 'success');
+    } catch (error) {
+      console.error('Error creating ZIP:', error);
+      this.showStatus('Ошибка при создании архива', 'error');
+    }
+  }
+
+  canvasToBlob(canvas) {
+    return new Promise(resolve => {
+      canvas.toBlob(resolve);
+    });
+  }
+
+  downloadAllIndividually() {
+    this.showStatus('Скачивание файлов по отдельности...', 'info');
+
+    let delay = 0;
+
+    // Download icons
+    for (const [size] of this.generatedIcons) {
+      setTimeout(() => {
+        this.downloadSingleIcon(size);
+      }, delay);
+      delay += 500;
     }
 
-    downloadSingleIcon(size) {
-        const canvas = this.generatedIcons.get(size);
-        if (!canvas) return;
+    // Download manifest
+    setTimeout(() => {
+      this.downloadManifest();
+    }, delay);
 
-        canvas.toBlob(blob => {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `icon-${size}x${size}.png`;
-            a.click();
-            URL.revokeObjectURL(url);
-        });
-    }
+    this.showStatus('Все файлы скачаны!', 'success');
+  }
 
-    showDownloadActions() {
-        document.getElementById('downloadActions').style.display = 'block';
-    }
+  downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
-    async generateFaviconIco() {
-        try {
-            // Get 16x16 and 32x32 icons for favicon
-            const icon16 = this.generatedIcons.get(16);
-            const icon32 = this.generatedIcons.get(32);
+  generateReadme() {
+    const appName = document.getElementById('appName').value;
+    const useMinimalSet = document.getElementById('useMinimalSet').checked;
+    const sizesToUse = useMinimalSet ? this.minimalIconSizes : this.iconSizes;
 
-            if (!icon16 || !icon32) {
-                throw new Error('16x16 and 32x32 icons are required for favicon.ico');
-            }
+    return `# ${appName} - PWA Icons
 
-            // Convert canvases to PNG blobs
-            const blob16 = await this.canvasToBlob(icon16);
-            const blob32 = await this.canvasToBlob(icon32);
-
-            // Use PNG2ICOjs to create ICO file
-            const converter = new PngIcoConverter();
-            const inputs = [
-                { png: blob16 },
-                { png: blob32 }
-            ];
-
-            const icoBlob = await converter.convertToBlobAsync(inputs);
-            this.faviconIco = icoBlob;
-
-            return icoBlob;
-        } catch (error) {
-            console.error('Error generating favicon.ico:', error);
-            throw error;
-        }
-    }
-
-    async downloadAllAsZip() {
-        try {
-            this.showStatus('Подготовка ZIP архива...', 'info');
-
-            if (typeof JSZip === 'undefined') {
-                // Fallback to individual downloads
-                this.downloadAllIndividually();
-                return;
-            }
-
-            const zip = new JSZip();
-            const iconsFolder = zip.folder('icons');
-
-            // Add icons to zip
-            for (const [size, canvas] of this.generatedIcons) {
-                const blob = await this.canvasToBlob(canvas);
-                iconsFolder.file(`icon-${size}x${size}.png`, blob);
-            }
-
-            // Generate and add favicon.ico
-            try {
-                const faviconBlob = await this.generateFaviconIco();
-                zip.file('favicon.ico', faviconBlob);
-            } catch (error) {
-                console.warn('Could not generate favicon.ico:', error);
-            }
-
-            // Add manifest
-            zip.file('manifest.json', this.generateManifestJSON());
-
-            // Add README
-            zip.file('README.md', this.generateReadme());
-
-            // Generate and download ZIP
-            const zipBlob = await zip.generateAsync({ type: 'blob' });
-            this.downloadBlob(zipBlob, 'pwa-icons.zip');
-
-            this.showStatus('ZIP архив скачан!', 'success');
-
-        } catch (error) {
-            console.error('Error creating ZIP:', error);
-            this.showStatus('Ошибка при создании архива', 'error');
-        }
-    }
-
-    canvasToBlob(canvas) {
-        return new Promise(resolve => {
-            canvas.toBlob(resolve);
-        });
-    }
-
-    downloadAllIndividually() {
-        this.showStatus('Скачивание файлов по отдельности...', 'info');
-
-        let delay = 0;
-
-        // Download icons
-        for (const [size] of this.generatedIcons) {
-            setTimeout(() => {
-                this.downloadSingleIcon(size);
-            }, delay);
-            delay += 500;
-        }
-
-        // Download manifest
-        setTimeout(() => {
-            this.downloadManifest();
-        }, delay);
-
-        this.showStatus('Все файлы скачаны!', 'success');
-    }
-
-    downloadBlob(blob, filename) {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        a.click();
-        URL.revokeObjectURL(url);
-    }
-
-    generateReadme() {
-        const appName = document.getElementById('appName').value;
-
-        return `# ${appName} - PWA Icons
-
-Этот архив содержит полный набор иконок для PWA приложения "${appName}".
+Этот архив содержит ${useMinimalSet ? 'минимальный' : 'полный'} набор иконок для PWA приложения "${appName}".
 
 ## Содержимое
 
 ### Иконки (папка icons/)
-${this.iconSizes.map(size => `- icon-${size}x${size}.png`).join('\n')}
+${sizesToUse.map(size => `- icon-${size}x${size}.png`).join('\n')}
 
 ### Файлы конфигурации
 - manifest.json - Манифест PWA приложения
@@ -503,10 +618,16 @@ ${this.iconSizes.map(size => `- icon-${size}x${size}.png`).join('\n')}
 
 ## Размеры иконок
 
-- **16x16, 32x32** - Favicon (также включены в favicon.ico)
+${
+  useMinimalSet
+    ? `- **16x16, 32x32** - Favicon (также включены в favicon.ico)
+- **180x180** - Apple Touch Icon
+- **192x192, 512x512** - PWA стандарт`
+    : `- **16x16, 32x32** - Favicon (также включены в favicon.ico)
 - **48x48, 72x72, 96x96** - Android Chrome
 - **128x128, 144x144, 152x152** - Android/Windows
-- **192x192, 384x384, 512x512** - PWA стандарт
+- **192x192, 384x384, 512x512** - PWA стандарт`
+}
 
 ## Favicon
 
@@ -516,162 +637,170 @@ ${this.iconSizes.map(size => `- icon-${size}x${size}.png`).join('\n')}
 
 Иконки созданы с помощью PWA Icon Generator для MarkMirror Mobile.
 `;
+  }
+
+  generateManifestJSON() {
+    const appName = document.getElementById('appName').value;
+    const shortName = document.getElementById('shortName').value;
+    const themeColor = document.getElementById('themeColor').value;
+    const backgroundColor = document.getElementById('backgroundColor').value;
+    const useMinimalSet = document.getElementById('useMinimalSet').checked;
+
+    const manifest = {
+      name: appName,
+      short_name: shortName,
+      description: `${appName} - PWA приложение`,
+      start_url: '/',
+      display: 'standalone',
+      background_color: backgroundColor,
+      theme_color: themeColor,
+      orientation: 'any',
+      scope: '/',
+      lang: 'ru',
+      icons: [],
+    };
+
+    // Choose icon sizes based on toggle
+    const sizesToUse = useMinimalSet ? this.minimalIconSizes : this.iconSizes;
+
+    // Add icons
+    sizesToUse.forEach(size => {
+      manifest.icons.push({
+        src: `icons/icon-${size}x${size}.png`,
+        sizes: `${size}x${size}`,
+        type: 'image/png',
+        purpose: 'any maskable',
+      });
+    });
+
+    // Add shortcuts
+    manifest.shortcuts = [
+      {
+        name: 'Новый документ',
+        short_name: 'Новый',
+        description: 'Создать новый документ',
+        url: '/?action=new',
+        icons: [{ src: 'icons/icon-96x96.png', sizes: '96x96' }],
+      },
+    ];
+
+    this.manifestData = manifest;
+    return JSON.stringify(manifest, null, 2);
+  }
+
+  updateManifestPreview() {
+    const manifestJSON = this.generateManifestJSON();
+    document.getElementById('manifestPreview').textContent = manifestJSON;
+  }
+
+  downloadManifest() {
+    const manifestJSON = this.generateManifestJSON();
+    const blob = new Blob([manifestJSON], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'manifest.json';
+    a.click();
+
+    URL.revokeObjectURL(url);
+    this.showStatus('manifest.json скачан!', 'success');
+  }
+
+  async downloadFavicon() {
+    try {
+      const faviconBlob = await this.generateFaviconIco();
+      this.downloadBlob(faviconBlob, 'favicon.ico');
+      this.showStatus('favicon.ico скачан!', 'success');
+    } catch (error) {
+      console.error('Error downloading favicon:', error);
+      this.showStatus('Ошибка при создании favicon.ico', 'error');
     }
+  }
 
-    generateManifestJSON() {
-        const appName = document.getElementById('appName').value;
-        const shortName = document.getElementById('shortName').value;
-        const themeColor = document.getElementById('themeColor').value;
-        const backgroundColor = document.getElementById('backgroundColor').value;
-
-        const manifest = {
-            name: appName,
-            short_name: shortName,
-            description: `${appName} - PWA приложение`,
-            start_url: "/",
-            display: "standalone",
-            background_color: backgroundColor,
-            theme_color: themeColor,
-            orientation: "any",
-            scope: "/",
-            lang: "ru",
-            icons: []
-        };
-
-        // Add icons
-        this.iconSizes.forEach(size => {
-            manifest.icons.push({
-                src: `icons/icon-${size}x${size}.png`,
-                sizes: `${size}x${size}`,
-                type: "image/png",
-                purpose: "any maskable"
-            });
-        });
-
-        // Add shortcuts
-        manifest.shortcuts = [
-            {
-                name: "Новый документ",
-                short_name: "Новый",
-                description: "Создать новый документ",
-                url: "/?action=new",
-                icons: [{ src: "icons/icon-96x96.png", sizes: "96x96" }]
-            }
-        ];
-
-        this.manifestData = manifest;
-        return JSON.stringify(manifest, null, 2);
+  async copyManifestToClipboard() {
+    try {
+      const manifestJSON = this.generateManifestJSON();
+      await navigator.clipboard.writeText(manifestJSON);
+      this.showStatus('manifest.json скопирован в буфер обмена!', 'success');
+    } catch (error) {
+      console.error('Failed to copy to clipboard:', error);
+      this.showStatus('Ошибка при копировании в буфер обмена', 'error');
     }
-
-    updateManifestPreview() {
-        const manifestJSON = this.generateManifestJSON();
-        document.getElementById('manifestPreview').textContent = manifestJSON;
-    }
-
-    downloadManifest() {
-        const manifestJSON = this.generateManifestJSON();
-        const blob = new Blob([manifestJSON], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'manifest.json';
-        a.click();
-
-        URL.revokeObjectURL(url);
-        this.showStatus('manifest.json скачан!', 'success');
-    }
-
-    async downloadFavicon() {
-        try {
-            const faviconBlob = await this.generateFaviconIco();
-            this.downloadBlob(faviconBlob, 'favicon.ico');
-            this.showStatus('favicon.ico скачан!', 'success');
-        } catch (error) {
-            console.error('Error downloading favicon:', error);
-            this.showStatus('Ошибка при создании favicon.ico', 'error');
-        }
-    }
-
-    async copyManifestToClipboard() {
-        try {
-            const manifestJSON = this.generateManifestJSON();
-            await navigator.clipboard.writeText(manifestJSON);
-            this.showStatus('manifest.json скопирован в буфер обмена!', 'success');
-        } catch (error) {
-            console.error('Failed to copy to clipboard:', error);
-            this.showStatus('Ошибка при копировании в буфер обмена', 'error');
-        }
-    }
+  }
 }
 
 // Global functions for HTML onclick handlers
 let iconGenerator;
 
 function generateIcons() {
-    if (!iconGenerator.originalImage) {
-        iconGenerator.showStatus('Сначала загрузите изображение', 'error');
-        return;
-    }
+  if (!iconGenerator.originalImage) {
+    iconGenerator.showStatus('Сначала загрузите изображение', 'error');
+    return;
+  }
 
-    iconGenerator.showStatus('Генерация иконок...', 'info');
-    iconGenerator.updateProgress(0);
+  iconGenerator.showStatus('Генерация иконок...', 'info');
+  iconGenerator.updateProgress(0);
 
-    const iconsGrid = document.getElementById('iconsGrid');
-    iconsGrid.innerHTML = '';
-    iconGenerator.generatedIcons.clear();
+  const iconsGrid = document.getElementById('iconsGrid');
+  iconsGrid.innerHTML = '';
+  iconGenerator.generatedIcons.clear();
 
-    // Get settings
-    const cornerRadius = parseInt(document.getElementById('cornerRadius').value);
-    const padding = parseInt(document.getElementById('padding').value);
-    const backgroundColor = document.getElementById('backgroundColor').value;
+  // Get settings
+  const cornerRadius = parseInt(document.getElementById('cornerRadius').value);
+  const padding = parseInt(document.getElementById('padding').value);
+  const backgroundColor = document.getElementById('backgroundColor').value;
+  const useMinimalSet = document.getElementById('useMinimalSet').checked;
 
-    // Generate icons
-    iconGenerator.iconSizes.forEach((size, index) => {
-        setTimeout(() => {
-            const canvas = iconGenerator.generateIcon(size, cornerRadius, padding, backgroundColor);
-            iconGenerator.generatedIcons.set(size, canvas);
-            
-            // Add to grid
-            const iconItem = iconGenerator.createIconItem(size, canvas);
-            iconsGrid.appendChild(iconItem);
-            
-            // Update progress
-            const progress = ((index + 1) / iconGenerator.iconSizes.length) * 100;
-            iconGenerator.updateProgress(progress);
-            
-            // Show download actions when complete
-            if (index === iconGenerator.iconSizes.length - 1) {
-                iconGenerator.showDownloadActions();
-                iconGenerator.updateManifestPreview();
-                iconGenerator.showStatus('Все иконки сгенерированы!', 'success');
-            }
-        }, index * 100); // Stagger generation for smooth progress
-    });
+  // Choose icon sizes based on toggle
+  const sizesToGenerate = useMinimalSet ? iconGenerator.minimalIconSizes : iconGenerator.iconSizes;
+
+  // Generate icons
+  sizesToGenerate.forEach((size, index) => {
+    setTimeout(() => {
+      const canvas = iconGenerator.generateIcon(size, cornerRadius, padding, backgroundColor);
+      iconGenerator.generatedIcons.set(size, canvas);
+
+      // Add to grid
+      const iconItem = iconGenerator.createIconItem(size, canvas);
+      iconsGrid.appendChild(iconItem);
+
+      // Update progress
+      const progress = ((index + 1) / sizesToGenerate.length) * 100;
+      iconGenerator.updateProgress(progress);
+
+      // Show download actions when complete
+      if (index === sizesToGenerate.length - 1) {
+        iconGenerator.showDownloadActions();
+        iconGenerator.updateManifestPreview();
+        iconGenerator.showStatus('Все иконки сгенерированы!', 'success');
+      }
+    }, index * 100); // Stagger generation for smooth progress
+  });
 }
 
 function downloadAllIcons() {
-    iconGenerator.downloadAllAsZip();
+  iconGenerator.downloadAllAsZip();
 }
 
 function downloadManifest() {
-    iconGenerator.downloadManifest();
+  iconGenerator.downloadManifest();
 }
 
 function copyManifest() {
-    iconGenerator.copyManifestToClipboard();
+  iconGenerator.copyManifestToClipboard();
 }
 
 function downloadFavicon() {
-    iconGenerator.downloadFavicon();
+  iconGenerator.downloadFavicon();
 }
 
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', () => {
-    iconGenerator = new IconGenerator();
+  iconGenerator = new IconGenerator();
 });
 
 // Export for module use
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = IconGenerator;
+  module.exports = IconGenerator;
 }

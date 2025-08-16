@@ -27,10 +27,19 @@
     <link rel="icon" type="image/png" sizes="192x192" href="./src/img/icon-192x192.png" />
 
     <!-- Apple Splash Screens -->
-    <link rel="apple-touch-startup-image" href="./src/img/splash-640x1136.png" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2)" />
-    <link rel="apple-touch-startup-image" href="./src/img/splash-750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)" />
+    <link
+      rel="apple-touch-startup-image"
+      href="./src/img/splash-640x1136.png"
+      media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2)"
+    />
+    <link
+      rel="apple-touch-startup-image"
+      href="./src/img/splash-750x1334.png"
+      media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)"
+    />
 
     <link rel="stylesheet" href="./src/style/index.css" />
+    <link rel="stylesheet" href="./src/style/element.css" />
   </head>
   <body>
     <div class="container">
@@ -104,6 +113,33 @@
               <input type="range" id="padding" min="0" max="30" value="10" />
               <span id="paddingValue">10%</span>
             </div>
+
+            <div class="control-group">
+              <div class="toggle-container">
+                <label class="switch">
+                  <input type="checkbox" id="addBackground" checked />
+                  <span class="slider"></span>
+                </label>
+                <span class="toggle-label">Добавить фон к иконкам</span>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <div class="toggle-container">
+                <label class="switch">
+                  <input type="checkbox" id="useMinimalSet" />
+                  <span class="slider"></span>
+                </label>
+                <span class="toggle-label">Минимальный набор размеров</span>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <button class="btn btn-secondary" onclick="iconGenerator.resetSettings()">🔄 Сбросить настройки</button>
+              <div class="settings-status" id="settingsStatus" style="display: none;">
+                <small>💾 Настройки сохранены</small>
+              </div>
+            </div>
           </div>
 
           <!-- Generate Button -->
@@ -150,11 +186,12 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js')
-            .then((registration) => {
+          navigator.serviceWorker
+            .register('./sw.js')
+            .then(registration => {
               console.log('SW registered: ', registration);
             })
-            .catch((registrationError) => {
+            .catch(registrationError => {
               console.log('SW registration failed: ', registrationError);
             });
         });

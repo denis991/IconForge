@@ -215,7 +215,7 @@ body {
   padding: 0.25rem;
 }
 
-.control-group input[type="color"] {
+.control-group input[type='color'] {
   width: 50px;
   height: 40px;
   padding: 0;
@@ -225,13 +225,13 @@ body {
   background: none;
 }
 
-.control-group input[type="color"]::-webkit-color-swatch-wrapper {
+.control-group input[type='color']::-webkit-color-swatch-wrapper {
   padding: 0;
   border: none;
   border-radius: 4px;
 }
 
-.control-group input[type="color"]::-webkit-color-swatch {
+.control-group input[type='color']::-webkit-color-swatch {
   border: none;
   border-radius: 4px;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
@@ -355,4 +355,20 @@ body {
   .icons-grid {
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   }
+}
+
+/* Settings status indicator */
+.settings-status {
+  margin-top: 0.5rem;
+  text-align: center;
+  color: #28a745;
+  font-weight: 500;
+  animation: fadeInOut 2s ease-in-out;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
 }
